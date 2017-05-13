@@ -1,0 +1,59 @@
+차 마다 가지고 있을 정보
+
+typedef struct path{
+ .....
+}path;
+
+
+ int myIP;
+ int fromIP; //앞차의 IP 
+ int rearIP; //뒷차의 IP
+ path myPath[]; 
+ int myCarId; //차량 이름 (혹은 번호) (고유해야함)
+ int serverSock;
+ int clientSock;
+ int isAvail;
+ 
+ //리더로 부터 오는 정보를 임시 저장하기 위해
+ int IDs[]; 
+ //char IPs[16][]; 
+
+///////////////////////////////////////////////////////
+
+ 리더가 가지고 있어야할 정보
+
+ typedef struct path{
+ .....
+}path;
+
+ int myIP;
+ int fromIP; //앞차의 IP 
+ int rearIP; //뒷차의 IP
+ path myPath[]; 
+ int myCarId; //차량 이름 (혹은 번호) (고유해야함)
+ int serverSock;
+ int clientSock;
+ int carCount; //차량 숫자 (그룹에 차량이 새로 추가될 때, 리더에게 굳이 알리지 않아도 됨) -> (전 논문내용이기에 우리 영역이 아님 항상 알고 있다고 가정)
+
+ int IDs[];
+ //char IPs[16][];
+ int sequences[];
+
+
+//////////////////////////////////////////////
+
+ typedef struct msg{
+	int IDs[];
+	char IPs[16][];
+	int sequences[];	
+ }msg; 
+
+ typedef struct packet{
+	int type; // 0,1,2,3, 4 (0:path다 가져와(리더가 뿌림), 1:path를 리더에게 주는거(각 차량이), 2:newGroup ,3:ACK, 
+	char path[3][50];
+	int GROUP_SEQUENCE;
+	msg message;	
+ }packet; 
+
+
+///////////////////////////////////////////////////
