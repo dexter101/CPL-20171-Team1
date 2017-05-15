@@ -42,18 +42,22 @@ char myIP[16];
 char frontIP[16]="20.20.1.130"; //앞차의 IP 
 char rearIP[16]; //뒷차의 IP
 path myPath[100]; 
+
 int myCarId; //차량 이름 (혹은 번호) (고유해야함)
 int serverSock;
 int clientSock;
 int isLeader;
 int isBackAvail;
 int isFrontAvail;
+int isMyPacket;
 int isBackChange;
+int type0_flag;
 int IDs[100]; //리더로 부터 오는 정보를 임시 저장하기 위해
 
 int main(int argc, char* argv[])
 {
 	int err_server, err_client;
+	int choice;
 	
 	if(argc != 3)
 	{
@@ -67,7 +71,15 @@ int main(int argc, char* argv[])
 	sleep(3); //서버들이 열려야...
 	openClient();
 	while(1)
-	{}
+	{
+		if(isLeader)
+		{
+			puts("Leader, choose one (0:type0)");
+			scanf("%d",&choice);
+			if(choice == 0)
+				type0_flag = 1; //flag will be 0 by any Thread.			
+		}
+	}
 }
 
 void init(char* IP, char* ID)
