@@ -27,6 +27,7 @@ typedef struct packet{
 	msg message;
 }packet;
 
+char cnt = 'A';
 void openServer();
 void openClient();
 void* server_thread(void *arg);
