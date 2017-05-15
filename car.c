@@ -7,6 +7,7 @@
 #include<unistd.h>    //write
 #include<poll.h>
 
+#define PORT 8083
 #define CARNUM 10
 
 typedef struct path{
@@ -147,7 +148,7 @@ void* server_thread(void *arg)
 	//Prepare the sockaddr_in structure
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = htons( 8889 );
+	server.sin_port = htons( PORT );
 
 	//Bind
 	if( bind(serverSock,(struct sockaddr *)&server , sizeof(server)) < 0)
@@ -176,21 +177,26 @@ void* server_thread(void *arg)
 
 	while(1)
 	{
+		puts("ttttttttttttttttttttttt");
 		cnt++;
 		tv.tv_sec = 0;
 		tv.tv_usec = 10000;
 
-		fd.fd = clientSock; // your socket handler 
+		fd.fd = client_sock; // your socket handler 
 		fd.events = POLLIN;
 		ret = poll(&fd, 1, 1000); // 1 second for timeout
+		//state = select(client_sock, &readfds, (fd_set *)0, (fd_set *)0, &tv);
 
+
+		puts("t2t2t2t2t2t2");
+		printf("ret test: %d		",ret);
 		//입력이 들어옴
 		if(ret!=0 && ret!=-1) //something come from behindCar
 		{
 			//Receive a reply from the server
 			if( recv(client_sock , &recv_packet , sizeof(recv_packet) , 0) < 0)
 			{
-				puts("recv failed");				
+				puts("server's recv failed");				
 			}
 			isFrontAvail = 1;
 		}
@@ -205,7 +211,7 @@ void* server_thread(void *arg)
 				puts("Send failed");
 			}
 			puts("11111111111111111");
-			isBackAvail = 1;
+			isBackAvail = 0;
 
 			if(isBackChange)
 			{
@@ -220,12 +226,14 @@ void* server_thread(void *arg)
 			}
 		}
 
-		if(type0_flag)
+		if(type0_flag) //path requset!. this if statement only be excuted if this car is the Leader
 		{
 			if( send(client_sock , &myPacket , sizeof(myPacket) , 0) < 0)
 			{
-				puts("Send failed");
+				puts("server: Send failed");
 			}
+			else
+				puts("server: Send Success");
 			type0_flag=0;
 		}
 	}
@@ -262,7 +270,7 @@ void* client_thread(void *arg)
 		puts("clientSock: Connected\n");
 
 	//keep communicating with server
-	while(1)
+	while(!isLeader)
 	{
 		tv.tv_sec = 1;
 		tv.tv_usec = 10000;
@@ -277,17 +285,18 @@ void* client_thread(void *arg)
 		{
 			if( recv(clientSock , &recv_packet , sizeof(recv_packet) , 0) < 0)
 			{				
-				puts("recv failed");				
+				puts("client recv failed");				
 			}
 			else
 			{
 				puts("recv something");
-				puts(recv_packet.path[0]);
+				printPacket(recv_packet);
+				//puts(recv_packet.path[0]);
 				isBackAvail = 1;
 			}
 		}
 
-		puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+		//puts("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		//입력이 들어오든 안들어오든 뒷차로 쏘아줄 정보가 있는지
 		if(isFrontAvail)
 		{
@@ -295,6 +304,8 @@ void* client_thread(void *arg)
 			{
 				puts("Send failed");
 			}	
+			else
+				puts("Send success");
 			isFrontAvail = 0;
 		}
 	}
