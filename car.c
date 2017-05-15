@@ -32,6 +32,7 @@ void openClient();
 void* server_thread(void *arg);
 void* client_thread(void *arg);
 void init(char* IP, char* ID); //initiate IP(or isLeader) and ID
+void printPacket(packet p);
 
 packet recv_packet;
 packet send_packet;
@@ -46,12 +47,15 @@ path myPath[100];
 int myCarId; //차량 이름 (혹은 번호) (고유해야함)
 int serverSock;
 int clientSock;
+
 int isLeader;
+int isSCH;
 int isBackAvail;
 int isFrontAvail;
 int isMyPacket;
 int isBackChange;
 int type0_flag;
+
 int IDs[100]; //리더로 부터 오는 정보를 임시 저장하기 위해
 
 int main(int argc, char* argv[])
@@ -77,7 +81,10 @@ int main(int argc, char* argv[])
 			puts("Leader, choose one (0:type0)");
 			scanf("%d",&choice);
 			if(choice == 0)
+			{
 				type0_flag = 1; //flag will be 0 by any Thread.			
+				myPacket.type = 0;
+			}
 		}
 	}
 }
@@ -132,7 +139,7 @@ void* server_thread(void *arg)
 	serverSock = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
-		printf("Could not create socket");
+		printf("Could not create socket\n");
 	}
 	puts("Socket created");
 
@@ -211,6 +218,15 @@ void* server_thread(void *arg)
 				isBackChange=0;
 			}
 		}
+
+		if(type0_flag)
+		{
+			if( send(client_sock , &myPacket , sizeof(myPacket) , 0) < 0)
+			{
+				puts("Send failed");
+			}
+			type0_flag=0;
+		}
 	}
 
 	return NULL;
@@ -259,14 +275,14 @@ void* client_thread(void *arg)
 		if(ret!=0 && ret!=-1)
 		{
 			if( recv(clientSock , &recv_packet , sizeof(recv_packet) , 0) < 0)
-			{
+			{				
 				puts("recv failed");				
 			}
 			else
 			{
 				puts("recv something");
 				puts(recv_packet.path[0]);
-				isBackAvail;
+				isBackAvail = 1;
 			}
 		}
 
@@ -282,4 +298,24 @@ void* client_thread(void *arg)
 		}
 	}
 	close(clientSock);
+}
+
+void printPacket(packet p)
+{
+	int i;
+	printf("type:%d\n",p.type);
+	if(p.type == 1)	
+	{
+		puts("--------------path--------------");
+		for(i=0; i<3; ++i)
+			printf("%s\n", p.path[i]);
+	}
+
+	if(p.type == 2)
+	{
+		puts("--------------notification--------------");
+		for(i=0; i<CARNUM; ++i)
+			printf("%d	", p.message.IDs[i]);
+		puts("");
+	}
 }
