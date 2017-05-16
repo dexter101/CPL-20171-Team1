@@ -7,10 +7,9 @@
 #include<arpa/inet.h> //inet_addr
 #include<unistd.h>    //write
 #include<poll.h>
-#include <sys/time.h>
 
-#define CARNUM 3
-#define PORT 8888
+#define CARNUM 9
+#define PORT 8889
 #define MAX 100
 
 typedef struct path_info{
@@ -42,31 +41,22 @@ void openClient();
 void* server_thread(void *arg);
 void* client_thread(void *arg);
 void init(char* IP, char* ID); //initiate IP(or isLeader) and ID
-void* timer();
-packet make_ACK_packet(packet p);
 
 packet server_recv_packet;
 packet server_send_packet;
 packet client_recv_packet;
 packet client_send_packet;
 packet myPacket;
-pthread_t tid[3]; //0:cleint(앞차랑 연결), 1:server(뒷차랑 연결), 2:timer
+pthread_t tid[2]; //0:cleint(앞차랑 연결), 1:server(뒷차랑 연결)
 
 char myIP[16];
 char frontIP[16]="20.20.1.130"; //앞차의 IP 
 char rearIP[16]; //뒷차의 IP즘
 path_info myPath[MAX]; //나의 path
 
-//timer
-struct timeval prev, now;
-double prev_mill, now_mill;
-
-int isSCH;
-
 packet packetQueue[CARNUM];
 //path_info Store_input[10]; //프로그램 시작 시 나의 path를 파일로 부터 입
 
-int recvNum = 1;
 int numOfCar = CARNUM;
 int carIDs[CARNUM];
 int pathRecvCheck; //numOfCar와 같아지면 pathRecv다 온거다.
@@ -89,9 +79,32 @@ int IDs[100]; //리더로 부터 오는 정보를 임시 저장하기 위해
 
 int main(int argc, char* argv[])
 {
+	packet p0;	p0.from=0;	strcpy(p0.p_Info[0].path_name,"A");	p0.p_Info[0].distance = p0.p_Info[0].direction=0;
+	packet p1;	p1.from=1;	strcpy(p1.p_Info[0].path_name,"B");	p1.p_Info[0].distance = p1.p_Info[0].direction=0;
+	packet p2;	p2.from=2;	strcpy(p2.p_Info[0].path_name,"B");	p2.p_Info[0].distance = p2.p_Info[0].direction=0;
+	packet p3;	p3.from=3;	strcpy(p3.p_Info[0].path_name,"C");	p3.p_Info[0].distance = p3.p_Info[0].direction=0;
+	packet p4;	p4.from=4;	strcpy(p4.p_Info[0].path_name,"B");	p4.p_Info[0].distance = p4.p_Info[0].direction=0;
+	packet p5;	p5.from=5;	strcpy(p5.p_Info[0].path_name,"C");	p5.p_Info[0].distance = p5.p_Info[0].direction=0;
+	packet p6;	p6.from=6;	strcpy(p6.p_Info[0].path_name,"A");	p6.p_Info[0].distance = p6.p_Info[0].direction=0;
+	packet p7;	p7.from=7;	strcpy(p7.p_Info[0].path_name,"C");	p7.p_Info[0].distance = p7.p_Info[0].direction=0;
+	packet p8;	p8.from=8;	strcpy(p8.p_Info[0].path_name,"A");	p8.p_Info[0].distance = p8.p_Info[0].direction=0;
+
+	pathRecvCheck=1;
+	packetQueue[0] = p0;
+	packetQueue[pathRecvCheck++] = p1;
+	packetQueue[pathRecvCheck++] = p2;
+	packetQueue[pathRecvCheck++] = p3;
+	packetQueue[pathRecvCheck++] = p4;
+	packetQueue[pathRecvCheck++] = p5;
+	packetQueue[pathRecvCheck++] = p6;
+	packetQueue[pathRecvCheck++] = p7;
+	packetQueue[pathRecvCheck++] = p8;
+
+	order_algorithm();
+	/*
 	int choice;
 	FILE* f;
-	int err_timer;
+
 
 	if( (f = fopen("input.txt","r")) == 0 )
 	{
@@ -112,16 +125,6 @@ int main(int argc, char* argv[])
 	
 	init(argv[1], argv[2]);
 
-
-	err_timer = pthread_create(&(tid[2]), NULL, &timer, NULL);
-
-	if (err_timer != 0)
-		printf("\ncan't create thread :[%s]", strerror(err_timer));
-	else
-		printf("\n Timer Thread created successfully\n");
-
-
-
 	openServer();
 	sleep(3); //서버들이 열려야...
 	openClient();
@@ -136,43 +139,10 @@ int main(int argc, char* argv[])
 				server_send_packet.type = 0;
 				pathRecvCheck=1;
 			}
-			else if(choice == 2) {
-				type0_flag = 1;
-				recvNum = 1;
-				server_send_packet.type = 2;
-			}
 		}
 	}
+	*/
 }
-
-
-void* timer() {	//mj
-	gettimeofday(&prev, NULL);
-	prev_mill = (prev.tv_sec) * 1000 + (prev.tv_usec) / 1000;
-
-	while (1) {
-		gettimeofday(&now, NULL);
-		now_mill = (now.tv_sec) * 1000 + (now.tv_usec) / 1000;
-
-		if (now_mill - prev_mill >= 50) {
-			//printf("%.0lf %d\n",prev_mill, isSCH);
-			prev_mill = now_mill;
-			prev = now;
-			if (isSCH == 0)
-				isSCH = 1;
-			else
-				isSCH = 0;
-		}
-	}
-
-}
-
-packet make_ACK_packet(packet p) {
-	p.type = 3;
-	p.from = myCarId;
-	return p;
-}
-
 
 void init(char* IP, char* ID)
 {
@@ -266,7 +236,6 @@ void* server_thread(void *arg)
 
 	while(1)
 	{
-		if (!isSCH) continue;
 		fd.fd = client_sock; // your socket handler 
 		fd.events = POLLIN;
 		ret = poll(&fd, 1, 1000); // 1 second for timeout
@@ -285,7 +254,7 @@ void* server_thread(void *arg)
 			else {
 				
 				if(isLeader) //리더 앞에 그룹원이 없으니까.
-				{			
+				{					
 					if(server_recv_packet.type == 1)
 					{
 						memcpy(&packetQueue[pathRecvCheck++], &server_recv_packet, sizeof(packet));
@@ -296,7 +265,6 @@ void* server_thread(void *arg)
 						*/
 						if(pathRecvCheck == CARNUM)
 						{
-							puts("path 모두 도착!");
 							order_algorithm();
 						}					
 					} 
@@ -317,8 +285,7 @@ void* server_thread(void *arg)
 					isFrontAvail = 1;
 					
 				}
-				if(server_recv_packet.type!=0)
-					printPacket(server_recv_packet);
+				printPacket(server_recv_packet);
 			}
 			
 		}
@@ -444,7 +411,7 @@ void order_algorithm()
 
 	puts("서브그룹 감지!!");
 	result[0] = myCarId;
-	for(i=0; i<CARNUM; ++i) //리더는 어차피 맨앞이니까.	
+	for(i=0; i<CARNUM; ++i) //리더는 어짜피 맨앞이니까.	
 		printf("%d ",result[i]);
 	puts("");	
 }
@@ -499,51 +466,35 @@ void* client_thread(void *arg)
 	//keep communicating with server
 	while(!isLeader)
 	{
-		if(!isSCH) continue;
-
 		fd.fd = clientSock; // your socket handler 
 		fd.events = POLLIN;
 		ret = poll(&fd, 1, 1000); // 1 second for timeout
 		printf("ret:%d  ",ret);
 		if(ret!=0 && ret!=-1)
 		{
-			if( recv(clientSock , &client_recv_packet , sizeof(client_recv_packet) , 0) <= 0)
+			if( recv(clientSock , &client_recv_packet , sizeof(client_recv_packet) , 0) < 0)
 			{
 				puts("recv failed");				
 			}
 			else
 			{
 				switch(client_recv_packet.type){
-					case 0:
-	
+					case 0 :
 						server_send_packet.type = client_recv_packet.type;
 						client_send_packet.type = 1;
-	
-						for (k = 0; k < 3; k++)
-						{
-							if (myPath_current + k > count) break;
-							strcpy(client_send_packet.p_Info[k].path_name, myPath[myPath_current + k].path_name);
-							client_send_packet.p_Info[k].direction = myPath[myPath_current + k].direction;
-							client_send_packet.p_Info[k].distance = myPath[myPath_current + k].distance;
-						}
-						myPath_current++;
-	
+						strcpy(client_send_packet.p_Info[0].path_name,"0000");
+						strcpy(client_send_packet.p_Info[1].path_name,"1111");
+						strcpy(client_send_packet.p_Info[2].path_name,"2222");
 						client_send_packet.from = myCarId;
 						isClient_flag = 1;
-	
-	
-					break;
-
+						break;
 					case 2 :
 						server_send_packet.type = client_recv_packet.type;
 						for(k = 0;k < 10;k++)
 							server_send_packet.message.IDs[k] = client_recv_packet.message.IDs[k];
 						for(k = 0;k < 10;k++)
 							server_send_packet.message.sequences[k] = client_recv_packet.message.sequences[k];
-						
-						make_ACK_packet(client_send_packet);
-						isFrontAvail = 1;
-					break;
+						break;
 				}
 				puts("recv something");
 				//puts(recv_packet.path[0]);
@@ -583,17 +534,15 @@ void printPacket(packet p)
 	{
 		puts("--------------path--------------");
 		for(i=0; i<3; ++i)
-			printf("direction:%d, where: %s distance:%d\n", p.p_Info[i].direction, p.p_Info[i].path_name, p.p_Info[i].distance);
+			printf("direction:%d, where: %s distance:%d\n", p.p_Info[i].path_name);
 	}
 
-	else if(p.type == 2)
+	if(p.type == 2)
 	{
 		puts("--------------notification--------------");
 		for(i=0; i<CARNUM; ++i)
 			printf("%d	", p.message.IDs[i]);
 		puts("");
 	}
-	else if (p.type == 3)
-		puts("received type3");
 	puts("=======================END=======================");
 }
